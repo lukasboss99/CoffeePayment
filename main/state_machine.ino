@@ -135,7 +135,7 @@ void state3() {  // Kaffeebezug
     db.writeCell(nutzerNummer, 3, counter);
     tft.fillScreen(ST77XX_BLACK);
     tft.setTextSize(2);
-    /* PRE HOLIDAY UPDATE
+    // PRE HOLIDAY UPDATE
     tft.setCursor(62, 40);
     tft.print("...");
     tft.setCursor(30, 80);
@@ -144,8 +144,7 @@ void state3() {  // Kaffeebezug
     tft.print(preis);
     tft.setCursor(100, 80);
     tft.print("EUR");
-    */
-    //HOLIDAY UPDATE
+    /*HOLIDAY UPDATE
     tft.setCursor(30, 10);
     tft.print("-");
     tft.setCursor(45, 10);
@@ -153,6 +152,7 @@ void state3() {  // Kaffeebezug
     tft.setCursor(100, 10);
     tft.print("EUR");
     drawRedTreeSymmetric();
+    */
   }
   if (t_relais > 500) {
     digitalWrite(PIN_RELAIS, LOW);

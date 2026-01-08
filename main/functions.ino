@@ -80,7 +80,7 @@ void updateArrow(int selectionMenu) {
 }
 //-------------------------------------------//
 void updateButton() {
-  if (debounce > 30) {
+  if (debounce > 20) {
     ok_button = !digitalRead(DI_ENCODER_SW);
     debounce = 0;
   }

@@ -65,8 +65,8 @@ Adafruit_ST7735 tft = Adafruit_ST7735(&spiBus, TFT_CS, TFT_DC, TFT_RST);
 #define COLOR_OFF_FILL ST77XX_BLACK
 // Position und Größe der virtuellen LED auf dem Display
 const int VLED_X = 140;  // X-Position
-const int VLED_Y = 10;  // Y-Position
-const int VLED_R = 5;   // Radius
+const int VLED_Y = 10;   // Y-Position
+const int VLED_R = 5;    // Radius
 // SD Card
 #define SD_CS 47
 #define SD_CLK 19
@@ -78,8 +78,15 @@ int numRows;
 // RFID
 #define RFID_CS 4
 MFRC522DriverPinSimple rfid_cs_pin(RFID_CS);
-MFRC522DriverSPI driver{ rfid_cs_pin, spiBus };
+
+MFRC522DriverSPI driver{
+  rfid_cs_pin,
+  spiBus,
+  SPISettings(2000000, MSBFIRST, SPI_MODE0)  // 2 MHz
+};
+
 MFRC522 mfrc522{ driver };
+
 bool cardPresent = 0;
 uint64_t uidDec = 0;
 // Encoder
@@ -98,12 +105,19 @@ void setup() {
   // Serial Monitor
   Serial.begin(115200);
   Serial.println("Serial i.O.");
+
   pinMode(SD_CS, OUTPUT);
+  pinMode(TFT_CS, OUTPUT);
+  pinMode(RFID_CS, OUTPUT);
+
   digitalWrite(SD_CS, HIGH);
+  digitalWrite(TFT_CS, HIGH);
+  digitalWrite(RFID_CS, HIGH);
+
   spiBus.begin(36, 37, 35);  // Display and RFID, SPI 1
   spiSD.begin(SD_CLK, SD_MISO, SD_MOSI);
   // SD Card
-  if (!SD.begin(SD_CS, spiSD, 40000000)) {
+  if (!SD.begin(SD_CS, spiSD, 4000000)) {
     Serial.println("SD-Karte konnte nicht initialisiert werden");
     while (true) delay(1000);
   }
@@ -124,19 +138,19 @@ void setup() {
   //db.printSDstatus();  //[optional] print the initialization status of SD card
   //db.emptyTable();     //[optional] empty table content (make sure to call begin(rowN, colN) after emptying a table) // you could always add more rows.
   db.begin(1, 4);  //[optional] initialize an empty table with x rows and y columns (has no effect if table is not empty)
-  db.writeCell(0, 0, "ID_LOW");
-  db.writeCell(0, 1, "ID_HIGH");
-  db.writeCell(0, 2, "SALDO");
-  db.writeCell(0, 3, "COUNTER");
+  //db.writeCell(0, 0, "ID_LOW");
+  //db.writeCell(0, 1, "ID_HIGH");
+  //db.writeCell(0, 2, "SALDO");
+  //db.writeCell(0, 3, "COUNTER");
   /************************************************************************************************************************************************************
             /////////////////////////////////////////////////////////////Update copy csv/////////////////////////////////////////////////////////////////////
   ************************************************************************************************************************************************************/
   //Backup CSV Datei
   dbcopy.begin(1, 4);
-  dbcopy.writeCell(0, 0, "ID_LOW");
-  dbcopy.writeCell(0, 1, "ID_HIGH");
-  dbcopy.writeCell(0, 2, "SALDO");
-  dbcopy.writeCell(0, 3, "COUNTER");
+  //dbcopy.writeCell(0, 0, "ID_LOW");
+  //dbcopy.writeCell(0, 1, "ID_HIGH");
+  //dbcopy.writeCell(0, 2, "SALDO");
+  //dbcopy.writeCell(0, 3, "COUNTER");
   /************************************************************************************************************************************************************
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ************************************************************************************************************************************************************/

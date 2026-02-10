@@ -8,7 +8,7 @@ void readRFID() {
     timerRFID = 0;
     cardPresent = 1;
   }
-  if (timerRFID > 500) {
+  if (timerRFID > 1500) { // 500 reicht hier eigentlich wenn nicht andere stellen im Code blockieren
     cardPresent = 0;
   }
 }
@@ -42,7 +42,6 @@ void knobCallback(long value) {
   scaledValue = 0.0;
   scaledValue = value * 5.0;
   rawValue = scaledValue / 5;
-  //Serial.println(scaledValue);
   if (current_state == 4) {
     tft.fillScreen(ST77XX_BLACK);
     tft.setTextSize(1);

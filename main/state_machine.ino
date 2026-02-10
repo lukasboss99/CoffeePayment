@@ -33,10 +33,9 @@ void state2() {  // Auswahl Kaffee bzw. Aufladen
       if (storedUID == uidDec) {
         nutzerNummer = i;  // Zeile in der der Nutzer gefunden wurde. Beginnt in Zeile 1 weil Zeile 0 der Header ist
         foundUID = true;
+        break; // Schleife verlassen
       }
     }
-    Serial.print("foundUID: ");
-    Serial.println(foundUID);
     if (i == numRows && !foundUID) {                       // Neuen Nutzer anlegen wenn noch nicht in der Liste vorhanden
       uint32_t lowPart = (uint32_t)(uidDec & 0xFFFFFFFF);  // Untere 32 Bits UID
       uint32_t highPart = (uint32_t)(uidDec >> 32);        // Obere 32 Bits UID
@@ -44,23 +43,12 @@ void state2() {  // Auswahl Kaffee bzw. Aufladen
       long highUID = (long)highPart;
       db.appendEmptyRow();
       numRows = db.countRows();
-      Serial.print("numRows2: ");
-      Serial.println(numRows);
       db.writeCell(numRows - 1, 0, lowUID);
       db.writeCell(numRows - 1, 1, highUID);
       nutzerNummer = numRows - 1;
-      Serial.println("!!!!!!!!!!!!NEUE ID GESCHRIEBEN!!!!!!!!!!!!!");
     }
 
     saldo = db.readCell(nutzerNummer, 2).toFloat();
-    Serial.println(saldo);
-    //name = db.readCell(nutzerNummer, 1);
-
-    // if (db.readCell(nutzerNummer, 1).length() < 1) {  // Wenn kein Name eingetragen wurde abbruch
-    //   Serial.println("Noch kein Name vorhanden");
-    // } else {
-    //   Serial.println(name);
-    // }
 
     // Header: Nutzer-Nr und Saldo
     tft.fillScreen(ST77XX_BLACK);

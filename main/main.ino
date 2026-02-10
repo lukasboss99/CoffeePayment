@@ -103,8 +103,8 @@ RotaryEncoder rotaryEncoder(DI_ENCODER_A, DI_ENCODER_B);
 
 void setup() {
   // Serial Monitor
-  Serial.begin(115200);
-  Serial.println("Serial i.O.");
+  //Serial.begin(115200);
+  //Serial.println("Serial i.O.");
 
   pinMode(SD_CS, OUTPUT);
   pinMode(TFT_CS, OUTPUT);
@@ -118,10 +118,11 @@ void setup() {
   spiSD.begin(SD_CLK, SD_MISO, SD_MOSI);
   // SD Card
   if (!SD.begin(SD_CS, spiSD, 4000000)) {
-    Serial.println("SD-Karte konnte nicht initialisiert werden");
+    //Serial.println("SD-Karte konnte nicht initialisiert werden");
     while (true) delay(1000);
   }
-  Serial.println("SD-Karte erkannt");
+  //Serial.println("SD-Karte erkannt");
+ 
   // Rotary Encoder
   rotaryEncoder.setEncoderType(EncoderType::HAS_PULLUP);
   rotaryEncoder.setBoundaries(-1000, 1000, false);
@@ -186,6 +187,7 @@ void loop() {
   readRFID();
   updateButton();
   machineReady();
+  /*
   if (monitor > 250) {
     //Serial.println(uidDec);
     //Serial.println(cardPresent);
@@ -195,4 +197,5 @@ void loop() {
     // Serial.println(selectionMenu);
     monitor = 0;
   }
+  */
 }

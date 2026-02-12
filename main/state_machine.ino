@@ -33,7 +33,7 @@ void state2() {  // Auswahl Kaffee bzw. Aufladen
       if (storedUID == uidDec) {
         nutzerNummer = i;  // Zeile in der der Nutzer gefunden wurde. Beginnt in Zeile 1 weil Zeile 0 der Header ist
         foundUID = true;
-        break; // Schleife verlassen
+        break;  // Schleife verlassen
       }
     }
     if (i == numRows && !foundUID) {                       // Neuen Nutzer anlegen wenn noch nicht in der Liste vorhanden
@@ -114,24 +114,34 @@ bool transitionS2S1() {
 void state3() {  // Kaffeebezug
   if (machine.executeOnce) {
     current_state = 3;
+    tft.fillScreen(ST77XX_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(62, 40);
+    tft.print("...");
     t_relais = 0;
     digitalWrite(PIN_RELAIS, HIGH);
     saldo = saldo - preis;
     counter = db.readCell(nutzerNummer, 3).toInt();
+    timerRFID = 0;
     counter = counter + 1;
     db.writeCell(nutzerNummer, 2, String(saldo, 2));
+    timerRFID = 0;
     db.writeCell(nutzerNummer, 3, counter);
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setTextSize(2);
-    // PRE HOLIDAY UPDATE
-    tft.setCursor(62, 40);
-    tft.print("...");
+    timerRFID = 0;
+
     tft.setCursor(30, 80);
     tft.print("-");
     tft.setCursor(45, 80);
     tft.print(preis);
     tft.setCursor(100, 80);
     tft.print("EUR");
+
+    tft.setTextSize(1);
+    tft.setCursor(35, 110);
+    tft.print("COFFEE NO.:");
+    tft.setCursor(105, 110);
+    tft.print(counter);
+
     /*HOLIDAY UPDATE
     tft.setCursor(30, 10);
     tft.print("-");

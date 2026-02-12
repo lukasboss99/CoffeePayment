@@ -8,7 +8,7 @@ void readRFID() {
     timerRFID = 0;
     cardPresent = 1;
   }
-  if (timerRFID > 1500) { // 500 reicht hier eigentlich wenn nicht andere stellen im Code blockieren
+  if (timerRFID > 2500) { // 500 reicht hier eigentlich wenn nicht andere stellen im Code blockieren
     cardPresent = 0;
   }
 }

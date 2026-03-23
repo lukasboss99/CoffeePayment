@@ -203,3 +203,105 @@ void drawRedTreeSymmetric() {
   }
 }
 
+/*--Hilfsfunktion zum Ausführen von SQL--*/
+int db_exec(const char *sql) 
+{
+    char *zErrMsg = 0;
+    int rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        Serial.printf("SQL Fehler: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
+    return rc;
+}
+/*---------------------------------------*/
+
+/*--Nutzer suchen oder anlegen in DB--*/
+void sucheNutzer(uint64_t gesuchteID)
+{
+  char *zErrMsg  = 0;
+  sqlite3_stmt *res;  //res dient hier als Speicher
+
+  // Hier der Part vom anlegen
+  String insertSql = "INSERT OR IGNORE INTO kaffee_nutzer (id, saldo, anzahl_kaffees) VALUES (" + String(gesuchteID) + " , 0.0, 0);"; // Befehl zum Einfügen oder Ignorieren falls vorhanden
+
+  int rc = sqlite3_exec(db, insertSql.c_str(), NULL, NULL, &zErrMsg);
+  if (rc != SQLITE_OK)
+  {
+    Serial.printf("Fehler bei SQL-Funktion Insert: %s\n", zErrMsg);
+    sqlite3_free(zErrMsg);
+    return;
+  }
+
+  //  Hier der Part vom suchen
+  const char *sql = "SELECT saldo, anzahl_kaffees FROM kaffee_nutzer WHERE id = ?;";    //  Direkt alle Daten vom Nutzer auslesen
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK)   //  db = Datenbankverbindung ; sql = SELECT Anweisung ; &res = Unser Speicher ; -1 = Lesen bis \0 also ende
+  {
+    sqlite3_bind_int64(res, 1, gesuchteID); 
+    if (sqlite3_step(res) == SQLITE_ROW)  //  Einmal durch die DB durch gehen bis die ID gefunden wurde
+    {
+      saldo = sqlite3_column_double(res, 0);
+      counter = sqlite3_column_int(res, 1);
+    }
+    sqlite3_finalize(res);  // res wieder freigeben fürs nächste mal
+  }
+}
+/*---------------------------------------*/
+
+/*--Entlastung der Loop durch FreeRTOS--*/
+void entlastung (void *pvParameters)
+{
+  while (1)
+  {
+    vTaskDelay(20 / portTICK_PERIOD_MS);  //  Durchlaufzeit
+
+    readRFID();
+    updateButton();
+    machineReady();
+    //  Debugging ohne Kaffeemaschiene sodass man Kaffee ziehen kann
+    // LED_var = 1;
+    // machine_ready = 1;
+  }
+}
+/*---------------------------------------*/
+
+/*--Kaffee kaufen und Zähler--*/
+void buchung(uint64_t gesuchteID, float neuesSaldo, int neuerCounter)
+{
+  sqlite3_stmt *res;
+  const char *sql = "UPDATE kaffee_nutzer SET saldo = ?, anzahl_kaffees = ? WHERE id = ?;";
+
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK)
+  {
+    sqlite3_bind_double(res, 1, neuesSaldo);  /**************/
+    sqlite3_bind_int(res, 2, neuerCounter);   /* Hier die Fragezeichen von oben füllen*/
+    sqlite3_bind_int64(res, 3, gesuchteID);   /**************/
+
+    if (sqlite3_step(res) == SQLITE_DONE)
+    {
+      Serial.println("Erfolgreich alles aktualisiert...");
+    }
+    sqlite3_finalize(res);
+  }
+}
+/*---------------------------------------*/
+
+/*--Aufladen eigentlich genau wie buchung nur ohne Counter (zu spät um buchung zu optimieren -.-)--*/
+void aufladen(uint64_t gesuchteID, float neuesSaldo)
+{
+  sqlite3_stmt *res;
+  const char *sql = "UPDATE kaffee_nutzer SET saldo = ? WHERE id = ?;";
+
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK)
+  {
+    sqlite3_bind_double(res, 1, neuesSaldo);
+    sqlite3_bind_int64(res, 2, gesuchteID);
+
+    if (sqlite3_step(res) == SQLITE_DONE)
+    {
+      Serial.println("Erfolgreich augeladen und Salod aktualisiert...");
+    }
+    sqlite3_finalize(res);
+  }
+}
+/*---------------------------------------*/

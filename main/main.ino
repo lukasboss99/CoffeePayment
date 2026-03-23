@@ -9,9 +9,11 @@
 #include <MFRC522DriverSPI.h>
 #include <MFRC522DriverPinSimple.h>
 #include <MFRC522Debug.h>
-#include <DatabaseOnSD.h>  //https://github.com/divinofire/DatabaseOnSD
 #include <SD.h>
 #include <ESP32RotaryEncoder.h>  //https://github.com/MaffooClock/ESP32RotaryEncoder
+
+/*--NEW--*/
+#include <sqlite3.h>
 
 // ------------------------- //
 
@@ -22,9 +24,9 @@ int lastSelection = -1;
 bool restartRequested = false;
 int i = 0;
 bool foundUID = false;
-int nutzerNummer = 9999;
-float saldo = 9999.0;
-float ladebetrag = 9999.0;
+int nutzerNummer = 0;
+float saldo = 0;
+float ladebetrag = 0;
 int counter = 0;
 bool machine_ready = 0;
 bool bare_LED;
@@ -72,12 +74,16 @@ const int VLED_R = 5;    // Radius
 #define SD_CLK 19
 #define SD_MISO 20
 #define SD_MOSI 21
-MyTable db("keytags.csv");
-MyTable dbcopy("backup.csv");
-int numRows;
+
+//  Datenbank
+sqlite3* db;
+
 // RFID
 #define RFID_CS 4
 MFRC522DriverPinSimple rfid_cs_pin(RFID_CS);
+
+// FreeRTOS
+void entlastung(void *pvParameters);
 
 MFRC522DriverSPI driver{
   rfid_cs_pin,
@@ -117,44 +123,49 @@ void setup() {
   spiBus.begin(36, 37, 35);  // Display and RFID, SPI 1
   spiSD.begin(SD_CLK, SD_MISO, SD_MOSI);
   // SD Card
-  if (!SD.begin(SD_CS, spiSD, 4000000)) {
+  if (!SD.begin(SD_CS, spiSD, 4000000)) 
+  {
     //Serial.println("SD-Karte konnte nicht initialisiert werden");
     while (true) delay(1000);
   }
   //Serial.println("SD-Karte erkannt");
- 
+
+  /*  Datenbank initialisieren und öffnen*/
+  sqlite3_initialize();
+
+  // Datenbank öffnen
+  if (sqlite3_open("/sd/kaffee.db", &db) == SQLITE_OK) 
+  {
+    Serial.println("Datenbank erfolgreich geladen.");
+  } 
+  else 
+  {
+    Serial.println("Fehler beim Öffnen.");
+    return;
+  }
+
+  // DIESER BEFEHL IST DER SCHLÜSSEL:
+  // Erstellt die Tabelle NUR, wenn sie noch nicht existiert.
+  const char* sql = "CREATE TABLE IF NOT EXISTS kaffee_nutzer ("
+                    "id INTEGER PRIMARY KEY, "
+                    "name TEXT, "
+                    "saldo REAL, "
+                    "anzahl_kaffees INTEGER);";
+
+  char* zErrMsg = 0;
+  sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+
   // Rotary Encoder
   rotaryEncoder.setEncoderType(EncoderType::HAS_PULLUP);
   rotaryEncoder.setBoundaries(-1000, 1000, false);
   rotaryEncoder.onTurned(&knobCallback);
   rotaryEncoder.begin();
   pinMode(DI_ENCODER_SW, INPUT);
-
   //Optokoppler
   pinMode(PIN_PC817, INPUT_PULLUP);
   //Relais
   pinMode(PIN_RELAIS, OUTPUT);
   digitalWrite(PIN_RELAIS, LOW);
-  // Database
-  //db.printSDstatus();  //[optional] print the initialization status of SD card
-  //db.emptyTable();     //[optional] empty table content (make sure to call begin(rowN, colN) after emptying a table) // you could always add more rows.
-  db.begin(1, 4);  //[optional] initialize an empty table with x rows and y columns (has no effect if table is not empty)
-  //db.writeCell(0, 0, "ID_LOW");
-  //db.writeCell(0, 1, "ID_HIGH");
-  //db.writeCell(0, 2, "SALDO");
-  //db.writeCell(0, 3, "COUNTER");
-  /************************************************************************************************************************************************************
-            /////////////////////////////////////////////////////////////Update copy csv/////////////////////////////////////////////////////////////////////
-  ************************************************************************************************************************************************************/
-  //Backup CSV Datei
-  dbcopy.begin(1, 4);
-  //dbcopy.writeCell(0, 0, "ID_LOW");
-  //dbcopy.writeCell(0, 1, "ID_HIGH");
-  //dbcopy.writeCell(0, 2, "SALDO");
-  //dbcopy.writeCell(0, 3, "COUNTER");
-  /************************************************************************************************************************************************************
-            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ************************************************************************************************************************************************************/
   // Display
   tft.initR(INITR_BLACKTAB);
   tft.setRotation(1);  // Querformat: 160x128
@@ -173,6 +184,7 @@ void setup() {
   S3->addTransition(transitionS3S1, S1);
   S4->addTransition(transitionS4S1, S1);
   S5->addTransition(transitionS5S1, S1);
+  xTaskCreatePinnedToCore(entlastung, "FreeRTOS-Entlastung", 8192, nullptr, 1, nullptr, 0);
 }
 
 // ------------------------ //
@@ -184,9 +196,6 @@ void loop() {
     restartRequested = false;
   }
   machine.run();
-  readRFID();
-  updateButton();
-  machineReady();
   /*
   if (monitor > 250) {
     //Serial.println(uidDec);

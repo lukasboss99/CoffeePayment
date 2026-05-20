@@ -8,7 +8,7 @@ void readRFID() {
     timerRFID = 0;
     cardPresent = 1;
   }
-  if (timerRFID > 2500) { // 500 reicht hier eigentlich wenn nicht andere stellen im Code blockieren
+  if (timerRFID >500) { // 500 reicht hier eigentlich wenn nicht andere stellen im Code blockieren
     cardPresent = 0;
   }
 }
@@ -95,11 +95,11 @@ void machineReady() {
     LED_var = HIGH;  // Power LED but without PWM effect
     powerLED = 0;    // elapsedMillis
   }
-  if (powerLED > 150) {
+  if (powerLED > 300) {
     LED_var = LOW;
     downLED = 0;  // elapsedSeconds
   }
-  if (downLED > 2 && LED_var) {  // if Power Led is on (cleaned up from pwm) is on since at least 2sec (elapsedSeconds)
+  if (downLED > 1 && LED_var) {  // if Power Led is on (cleaned up from pwm) is on since at least 1sec (elapsedSeconds)
     machine_ready = HIGH;
   } else {
     machine_ready = LOW;
@@ -216,34 +216,209 @@ int db_exec(const char *sql)
 }
 /*---------------------------------------*/
 
+/*--Prüfen, ob eine Tabellenspalte existiert--*/
+bool spalteExistiert(const char *tabellenName, const char *spaltenName)
+{
+  sqlite3_stmt *res;
+  bool gefunden = false;
+  String sql = "PRAGMA table_info(" + String(tabellenName) + ");";
+
+  if (sqlite3_prepare_v2(db, sql.c_str(), -1, &res, NULL) != SQLITE_OK) {
+    Serial.println("Fehler beim Lesen der Tabellenstruktur.");
+    return false;
+  }
+
+  while (sqlite3_step(res) == SQLITE_ROW) {
+    const char *name = (const char *)sqlite3_column_text(res, 1);
+    if (name != NULL && String(name) == spaltenName) {
+      gefunden = true;
+      break;
+    }
+  }
+
+  sqlite3_finalize(res);
+  return gefunden;
+}
+/*---------------------------------------*/
+
+/*--Nutzer-Nummer-Spalte fuer alte DB-Versionen nachziehen--*/
+void stelleNutzerNummerSpalteSicher()
+{
+  if (!spalteExistiert("kaffee_nutzer", "nutzer_nummer")) {
+    db_exec("ALTER TABLE kaffee_nutzer ADD COLUMN nutzer_nummer INTEGER;");
+  }
+}
+/*---------------------------------------*/
+
+/*--Naechste freie Nutzer-Nummer ermitteln--*/
+int naechsteNutzerNummer()
+{
+  sqlite3_stmt *res;
+  int nummer = 1;
+  const char *sql = "SELECT COALESCE(MAX(nutzer_nummer), 0) + 1 FROM kaffee_nutzer;";
+
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK) {
+    if (sqlite3_step(res) == SQLITE_ROW) {
+      nummer = sqlite3_column_int(res, 0);
+    }
+    sqlite3_finalize(res);
+  }
+
+  return nummer;
+}
+/*---------------------------------------*/
+
+/*--Nutzer-Nummer fuer bestehenden Nutzer speichern--*/
+void aktualisiereNutzerNummer(uint64_t gesuchteID, int neueNutzerNummer)
+{
+  sqlite3_stmt *res;
+  const char *sql = "UPDATE kaffee_nutzer SET nutzer_nummer = ? WHERE id = ?;";
+
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK) {
+    sqlite3_bind_int(res, 1, neueNutzerNummer);
+    sqlite3_bind_int64(res, 2, (sqlite3_int64)gesuchteID);
+    sqlite3_step(res);
+    sqlite3_finalize(res);
+  }
+}
+/*---------------------------------------*/
+
+/*--Einmalige Migration der alten RFID-Datenbank--*/
+void migriereAlteDatenbankEinmalig()
+{
+  struct AlterNutzerDatensatz {
+    int32_t idLow;
+    uint32_t idHigh;
+    bool hatWerte;
+    double saldo;
+    int counter;
+  };
+
+  const AlterNutzerDatensatz alteDaten[] = {
+    {443171712, 292203, true, 3.60, 152},
+    {1650739584, 292398, true, 9.30, 146},
+    {34293120, 275293, true, 13.10, 191},
+    {1650739584, 286736, true, -1.10, 153},
+    {1650739584, 291641, true, 2.20, 271},
+    {-636140416, 291418, true, 2.50, 200},
+    {34293120, 279900, true, 11.00, 72},
+    {-1429663600, 276798, true, 5.40, 69},
+    {1788964736, 271217, true, 13.40, 440},
+    {-354132352, 279648, true, 0.20, 178},
+    {-354132352, 278881, true, 4.90, 63},
+    {1650739584, 266557, true, 0.90, 155},
+    {-1776227178, 0, true, 40.40, 52},
+    {1781422464, 272413, false, 0.0, 0},
+    {1785008272, 269137, true, 0.00, 1},
+    {1785008272, 272393, true, 0.00, 2},
+    {34293120, 290677, true, 7.40, 70},
+    {1915640192, 272911, true, 0.00, 1},
+    {1785008272, 273493, false, 0.0, 0},
+    {34293120, 272478, true, 4.40, 4},
+    {1915640192, 281359, true, 4.50, 157},
+    {1650739584, 283197, true, 8.20, 168},
+    {314400384, 281130, true, -0.30, 1},
+    {1788964736, 271205, false, 0.0, 0},
+    {1785008272, 269672, true, 11.20, 46},
+    {34293120, 295542, true, 7.20, 26},
+    {-354132352, 266857, true, 0.80, 14},
+    {1785008272, 268887, true, 6.00, 30},
+    {1650739584, 273931, true, 3.50, 5},
+    {1650739584, 282154, false, 0.0, 0},
+    {1785008272, 270380, false, 0.0, 0},
+  };
+
+  const char *sql = "INSERT OR REPLACE INTO kaffee_nutzer "
+                    "(id, nutzer_nummer, name, saldo, anzahl_kaffees) VALUES (?, ?, ?, ?, ?);";
+  sqlite3_stmt *res;
+
+  if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) != SQLITE_OK) {
+    Serial.println("Fehler beim Vorbereiten der Migration.");
+    return;
+  }
+
+  db_exec("BEGIN TRANSACTION;");
+
+  for (size_t i = 0; i < sizeof(alteDaten) / sizeof(alteDaten[0]); i++) {
+    uint32_t lowPart = (uint32_t)alteDaten[i].idLow;
+    uint64_t highPart = (uint64_t)alteDaten[i].idHigh << 32;
+    uint64_t id = highPart | lowPart;
+
+    sqlite3_bind_int64(res, 1, (sqlite3_int64)id);
+    sqlite3_bind_int(res, 2, i + 1);
+    sqlite3_bind_text(res, 3, STANDARD_NAME, -1, SQLITE_STATIC);
+    if (alteDaten[i].hatWerte) {
+      sqlite3_bind_double(res, 4, alteDaten[i].saldo);
+      sqlite3_bind_int(res, 5, alteDaten[i].counter);
+    } else {
+      sqlite3_bind_null(res, 4);
+      sqlite3_bind_null(res, 5);
+    }
+
+    if (sqlite3_step(res) != SQLITE_DONE) {
+      Serial.printf("Migration fehlgeschlagen: high=%lu low=%ld\n",
+                    (unsigned long)alteDaten[i].idHigh,
+                    (long)alteDaten[i].idLow);
+    }
+
+    sqlite3_reset(res);
+    sqlite3_clear_bindings(res);
+  }
+
+  sqlite3_finalize(res);
+  db_exec("COMMIT;");
+  Serial.println("Alte Datenbank wurde migriert.");
+}
+/*---------------------------------------*/
+
 /*--Nutzer suchen oder anlegen in DB--*/
 void sucheNutzer(uint64_t gesuchteID)
 {
-  char *zErrMsg  = 0;
   sqlite3_stmt *res;  //res dient hier als Speicher
 
   // Hier der Part vom anlegen
-  String insertSql = "INSERT OR IGNORE INTO kaffee_nutzer (id, saldo, anzahl_kaffees) VALUES (" + String(gesuchteID) + " , 0.0, 0);"; // Befehl zum Einfügen oder Ignorieren falls vorhanden
+  const char *insertSql = "INSERT OR IGNORE INTO kaffee_nutzer "
+                          "(id, nutzer_nummer, name, saldo, anzahl_kaffees) VALUES (?, ?, ?, 0.0, 0);"; // Befehl zum Einfügen oder Ignorieren falls vorhanden
 
-  int rc = sqlite3_exec(db, insertSql.c_str(), NULL, NULL, &zErrMsg);
-  if (rc != SQLITE_OK)
-  {
-    Serial.printf("Fehler bei SQL-Funktion Insert: %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
+  if (sqlite3_prepare_v2(db, insertSql, -1, &res, NULL) == SQLITE_OK) {
+    sqlite3_bind_int64(res, 1, (sqlite3_int64)gesuchteID);
+    sqlite3_bind_int(res, 2, naechsteNutzerNummer());
+    sqlite3_bind_text(res, 3, STANDARD_NAME, -1, SQLITE_STATIC);
+
+    if (sqlite3_step(res) != SQLITE_DONE) {
+      Serial.println("Fehler bei SQL-Funktion Insert.");
+      sqlite3_finalize(res);
+      return;
+    }
+    sqlite3_finalize(res);
+  } else {
+    Serial.println("Fehler beim Vorbereiten vom Nutzer-Insert.");
     return;
   }
 
   //  Hier der Part vom suchen
-  const char *sql = "SELECT saldo, anzahl_kaffees FROM kaffee_nutzer WHERE id = ?;";    //  Direkt alle Daten vom Nutzer auslesen
+  const char *sql = "SELECT nutzer_nummer, saldo, anzahl_kaffees FROM kaffee_nutzer WHERE id = ?;";    //  Direkt alle Daten vom Nutzer auslesen
+  bool nutzerNummerSpeichern = false;
   if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) == SQLITE_OK)   //  db = Datenbankverbindung ; sql = SELECT Anweisung ; &res = Unser Speicher ; -1 = Lesen bis \0 also ende
   {
-    sqlite3_bind_int64(res, 1, gesuchteID); 
+    sqlite3_bind_int64(res, 1, (sqlite3_int64)gesuchteID);
     if (sqlite3_step(res) == SQLITE_ROW)  //  Einmal durch die DB durch gehen bis die ID gefunden wurde
     {
-      saldo = sqlite3_column_double(res, 0);
-      counter = sqlite3_column_int(res, 1);
+      if (sqlite3_column_type(res, 0) == SQLITE_NULL || sqlite3_column_int(res, 0) <= 0) {
+        nutzerNummer = naechsteNutzerNummer();
+        nutzerNummerSpeichern = true;
+      } else {
+        nutzerNummer = sqlite3_column_int(res, 0);
+      }
+      saldo = sqlite3_column_double(res, 1);
+      counter = sqlite3_column_int(res, 2);
+      geladeneNutzerID = gesuchteID;
     }
     sqlite3_finalize(res);  // res wieder freigeben fürs nächste mal
+  }
+
+  if (nutzerNummerSpeichern) {
+    aktualisiereNutzerNummer(gesuchteID, nutzerNummer);
   }
 }
 /*---------------------------------------*/

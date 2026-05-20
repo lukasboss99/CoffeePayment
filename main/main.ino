@@ -77,6 +77,7 @@ const int VLED_R = 5;    // Radius
 
 //  Datenbank
 sqlite3* db;
+const char* STANDARD_NAME = "UNBEKANNT";
 
 // RFID
 #define RFID_CS 4
@@ -84,6 +85,8 @@ MFRC522DriverPinSimple rfid_cs_pin(RFID_CS);
 
 // FreeRTOS
 void entlastung(void *pvParameters);
+void stelleNutzerNummerSpalteSicher();
+void migriereAlteDatenbankEinmalig();
 
 MFRC522DriverSPI driver{
   rfid_cs_pin,
@@ -95,6 +98,7 @@ MFRC522 mfrc522{ driver };
 
 bool cardPresent = 0;
 uint64_t uidDec = 0;
+uint64_t geladeneNutzerID = 0;
 // Encoder
 bool ok_button;
 long rawValue = 0;
@@ -148,12 +152,16 @@ void setup() {
   // Erstellt die Tabelle NUR, wenn sie noch nicht existiert.
   const char* sql = "CREATE TABLE IF NOT EXISTS kaffee_nutzer ("
                     "id INTEGER PRIMARY KEY, "
+                    "nutzer_nummer INTEGER, "
                     "name TEXT, "
                     "saldo REAL, "
                     "anzahl_kaffees INTEGER);";
 
   char* zErrMsg = 0;
   sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+  stelleNutzerNummerSpalteSicher();
+
+  // migriereAlteDatenbankEinmalig();
 
   // Rotary Encoder
   rotaryEncoder.setEncoderType(EncoderType::HAS_PULLUP);

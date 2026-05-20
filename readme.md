@@ -36,7 +36,7 @@ SQLite-Datei: `kaffee.db` (auf SD)
 Tabelle: `kaffee_nutzer`
 
 | id (INTEGER, PK) | nutzer_nummer (INTEGER) | name (TEXT) | saldo (REAL) | anzahl_kaffees (INTEGER) |
-|---|---|---|---|
+|---|---|---|---|---|
 | 287454020 | 999 | Verstappen | 20.50 | 12 |
 
 Hinweis: Neue IDs werden automatisch mit `saldo = 0.0` und `anzahl_kaffees = 0` angelegt.

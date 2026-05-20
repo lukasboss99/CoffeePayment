@@ -86,7 +86,7 @@ MFRC522DriverPinSimple rfid_cs_pin(RFID_CS);
 // FreeRTOS
 void entlastung(void *pvParameters);
 void stelleNutzerNummerSpalteSicher();
-void migriereAlteDatenbankEinmalig();
+
 
 MFRC522DriverSPI driver{
   rfid_cs_pin,
@@ -160,8 +160,6 @@ void setup() {
   char* zErrMsg = 0;
   sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
   stelleNutzerNummerSpalteSicher();
-
-  // migriereAlteDatenbankEinmalig();
 
   // Rotary Encoder
   rotaryEncoder.setEncoderType(EncoderType::HAS_PULLUP);

@@ -35,9 +35,9 @@ SQLite-Datei: `kaffee.db` (auf SD)
 
 Tabelle: `kaffee_nutzer`
 
-| id (INTEGER, PK) | name (TEXT) | saldo (REAL) | anzahl_kaffees (INTEGER) |
+| id (INTEGER, PK) | nutzer_nummer (INTEGER) | name (TEXT) | saldo (REAL) | anzahl_kaffees (INTEGER) |
 |---|---|---|---|
-| 287454020 | Verstappen | 20.50 | 12 |
+| 287454020 | 999 | Verstappen | 20.50 | 12 |
 
 Hinweis: Neue IDs werden automatisch mit `saldo = 0.0` und `anzahl_kaffees = 0` angelegt.
          Name wird noch nicht gesetzt ist aber schon vorhanden für eventuelle Updates!

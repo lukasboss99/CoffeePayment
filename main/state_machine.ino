@@ -25,31 +25,7 @@ void state2() {  // Auswahl Kaffee bzw. Aufladen
   if (machine.executeOnce) {
     current_state = 2;
     foundUID = false;
-    numRows = db.countRows();
-    for (i = 1; i < numRows; ++i) {  // Nach Nutzer suchen
-      double lowLong = db.readCell(i, 0).toDouble();
-      double highLong = db.readCell(i, 1).toDouble();
-      uint64_t storedUID = ((uint64_t)(uint32_t)highLong << 32) | (uint64_t)(uint32_t)lowLong;
-      if (storedUID == uidDec) {
-        nutzerNummer = i;  // Zeile in der der Nutzer gefunden wurde. Beginnt in Zeile 1 weil Zeile 0 der Header ist
-        foundUID = true;
-        break;  // Schleife verlassen
-      }
-    }
-    if (i == numRows && !foundUID) {                       // Neuen Nutzer anlegen wenn noch nicht in der Liste vorhanden
-      uint32_t lowPart = (uint32_t)(uidDec & 0xFFFFFFFF);  // Untere 32 Bits UID
-      uint32_t highPart = (uint32_t)(uidDec >> 32);        // Obere 32 Bits UID
-      long lowUID = (long)lowPart;
-      long highUID = (long)highPart;
-      db.appendEmptyRow();
-      numRows = db.countRows();
-      db.writeCell(numRows - 1, 0, lowUID);
-      db.writeCell(numRows - 1, 1, highUID);
-      nutzerNummer = numRows - 1;
-    }
-
-    saldo = db.readCell(nutzerNummer, 2).toFloat();
-
+    sucheNutzer(uidDec);
     // Header: Nutzer-Nr und Saldo
     tft.fillScreen(ST77XX_BLACK);
     tft.setTextSize(1);
@@ -121,13 +97,12 @@ void state3() {  // Kaffeebezug
     t_relais = 0;
     digitalWrite(PIN_RELAIS, HIGH);
     saldo = saldo - preis;
-    counter = db.readCell(nutzerNummer, 3).toInt();
     timerRFID = 0;
     counter = counter + 1;
-    db.writeCell(nutzerNummer, 2, String(saldo, 2));
     timerRFID = 0;
-    db.writeCell(nutzerNummer, 3, counter);
     timerRFID = 0;
+    //  Hier die DB aktualisieren
+    buchung(uidDec, saldo, counter);
 
     tft.setCursor(30, 80);
     tft.print("-");
@@ -197,7 +172,7 @@ bool transitionS4S5() {
   if (ok_button && stateJump > 2000) {
     saldo = saldo + (float)scaledValue;
     ladebetrag = scaledValue;
-    db.writeCell(nutzerNummer, 2, String(saldo, 2));
+    aufladen(uidDec, saldo);
     rotaryEncoder.setBoundaries(-1000, 1000, false);
     return true;
   }
@@ -230,39 +205,6 @@ void state5() {  // Aufladen bestätigen
     tft.setCursor(16, 70);  // Zentriert für ca. 9 Zeichen
     tft.print(saldo, 2);
     tft.print(" EUR");
-
-    /************************************************************************************************************************************************************
-          /////////////////////////////////////////////////////////////Update copy csv/////////////////////////////////////////////////////////////////////
-    ************************************************************************************************************************************************************/
-    /*
-    // Backup CSV Datei aktualisieren
-    numRows = db.countRows();  // Aktuelle Anzahl der Zeilen ermitteln
-    dbcopy.emptyTable();       // Datei leeren
-    dbcopy.begin(numRows, 4);  // Backup-Datei mit korrekter Größe neu initialisieren
-
-    tft.setCursor(16, 100);
-    tft.print("SPEICHERN..");
-    // Header kopieren
-    for (int j = 0; j < 4; ++j) {
-      String header = db.readCell(0, j);
-      dbcopy.writeCell(0, j, header);
-    }
-
-    // Daten Zeilenweise kopieren in Backup
-    for (int i = 1; i < numRows; ++i) {
-      for (int j = 0; j < 4; ++j) {
-        String spalte = db.readCell(i, j);
-        dbcopy.writeCell(i, j, spalte);
-      }
-    }
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setCursor(16, 60);
-    tft.print("GESPEICHERT!");
-    aufladebestaetigung = 0;
-    */
-    /************************************************************************************************************************************************************
-              //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ************************************************************************************************************************************************************/
   }
 }
 bool transitionS5S2() {

@@ -102,7 +102,7 @@ void machineReady() {
   if (downLED > 1 && LED_var) {  // if Power Led is on (cleaned up from pwm) is on since at least 1sec (elapsedSeconds)
     machine_ready = HIGH;
   } else {
-    machine_ready = LOW;
+    machine_ready = HIGH;
   }
 }
 //-------------------------------------------//

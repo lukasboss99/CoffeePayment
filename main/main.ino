@@ -11,6 +11,7 @@
 #include <MFRC522Debug.h>
 #include <SD.h>
 #include <ESP32RotaryEncoder.h>  //https://github.com/MaffooClock/ESP32RotaryEncoder
+#include "Geburtstags_Modus.h"
 
 /*--NEW--*/
 #include <sqlite3.h>

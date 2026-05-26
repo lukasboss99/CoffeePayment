@@ -32,6 +32,7 @@
 ## Aufbau der Datenbank
 
 SQLite-Datei: `kaffee.db` (auf SD)
+Programm zum Auswerten der Datenbank auf dem PC: DB Browser for SQLite
 
 Tabelle: `kaffee_nutzer`
 
@@ -66,3 +67,4 @@ stateDiagram-v2
 
 ## Schaltung Optokoppler (STATE LED ON/OFF)
 ![Optokoppler-Schaltung](src/images/optokoppler.png)
+

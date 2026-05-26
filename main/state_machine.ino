@@ -130,7 +130,7 @@ bool transitionS3S2() {
   return false;
 }
 bool transitionS3S1() {
-  if (restartRequested) {
+  if (restartRequested && bezug > 10000) { // Sicherstellen, dass die Balance auch geschrieben wird
     delay(250);
     digitalWrite(PIN_RELAIS, LOW);
     return true;

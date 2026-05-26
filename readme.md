@@ -32,12 +32,13 @@
 ## Aufbau der Datenbank
 
 SQLite-Datei: `kaffee.db` (auf SD)
+Programm zum Auswerten der Datenbank auf dem PC: DB Browser for SQLite
 
 Tabelle: `kaffee_nutzer`
 
-| id (INTEGER, PK) | name (TEXT) | saldo (REAL) | anzahl_kaffees (INTEGER) |
-|---|---|---|---|
-| 287454020 | Verstappen | 20.50 | 12 |
+| id (INTEGER, PK) | nutzer_nummer (INTEGER) | name (TEXT) | saldo (REAL) | anzahl_kaffees (INTEGER) |
+|---|---|---|---|---|
+| 287454020 | 999 | Verstappen | 20.50 | 12 |
 
 Hinweis: Neue IDs werden automatisch mit `saldo = 0.0` und `anzahl_kaffees = 0` angelegt.
          Name wird noch nicht gesetzt ist aber schon vorhanden für eventuelle Updates!
@@ -66,3 +67,4 @@ stateDiagram-v2
 
 ## Schaltung Optokoppler (STATE LED ON/OFF)
 ![Optokoppler-Schaltung](src/images/optokoppler.png)
+
